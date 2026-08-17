@@ -82,7 +82,7 @@ function getWatermarkFilter() {
     for (let x = 30; x < 854; x += stepX) {
       const escapedText = text.replace(/'/g, "'\\\\\\''").replace(/:/g, '\\\\:');
       drawtextFilters.push(
-        `drawtext=text='${escapedText}':fontcolor=0x464646@0.0:borderw=1.5:bordercolor=0x464646@0.35:fontsize=${fontSize}${fontParam}:x=${x + xOffset}:y=${y}`
+        `drawtext=text='${escapedText}':fontcolor=0x464646@0.0:borderw=1.5:bordercolor=0x464646@0.35:fontsize=dotsize${fontSize}${fontParam}:x=${x + xOffset}:y=${y}`
       );
     }
   }
@@ -266,6 +266,23 @@ async function generateVideoPreview(dealId, fileVersionId, fileId) {
   }
 }
 
+const authenticate = (req, res, next) => {
+  const secret = process.env.VIDEO_PROCESSOR_SECRET;
+  if (!secret) {
+    console.warn('[VIDEO_PROCESSOR] Warning: VIDEO_PROCESSOR_SECRET environment variable is not set. Allowing unauthenticated request.');
+    return next();
+  }
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Missing or invalid authorization header' });
+  }
+  const token = authHeader.split(' ')[1];
+  if (token !== secret) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+  }
+  next();
+};
+
 app.get('/health', async (req, res) => {
   let ffmpeg = false;
   let ffprobe = false;
@@ -285,7 +302,7 @@ app.get('/health', async (req, res) => {
   });
 });
 
-app.post('/process', async (req, res) => {
+app.post('/process', authenticate, async (req, res) => {
   const { dealId, fileVersionId, fileId } = req.body;
   if (!dealId || !fileVersionId || !fileId) {
     return res.status(400).json({ error: 'Missing required parameters: dealId, fileVersionId, fileId' });
