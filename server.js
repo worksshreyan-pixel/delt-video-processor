@@ -269,8 +269,8 @@ async function generateVideoPreview(dealId, fileVersionId, fileId) {
 const authenticate = (req, res, next) => {
   const secret = process.env.VIDEO_PROCESSOR_SECRET;
   if (!secret) {
-    console.warn('[VIDEO_PROCESSOR] Warning: VIDEO_PROCESSOR_SECRET environment variable is not set. Allowing unauthenticated request.');
-    return next();
+    console.error('[VIDEO_PROCESSOR] Configuration error: VIDEO_PROCESSOR_SECRET environment variable is not set.');
+    return res.status(500).json({ error: 'Internal Server Error: Video processor is misconfigured (missing authentication key)' });
   }
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
